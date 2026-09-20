@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini AI Voice Chat Studio</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --accent-color: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.4);
+      --user-msg: #0284c7;
+      --ai-msg: #334155;
+      --text-color: #f8fafc;
+      --text-dim: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      height: calc(100vh - 120px);
+    }
+
+    .config-panel {
+      background: var(--card-bg);
+      padding: 1rem;
+      border-radius: 12px;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    input, select {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: var(--text-color);
+      padding: 0.5rem 0.8rem;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent-color);
+    }
+
+    .visualizer-container {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .chat-container {
+      flex: 1;
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      line-height: 1.4;
+      font-size: 0.95rem;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background-color: var(--user-msg);
+      border-bottom-right-radius: 2px;
+    }
+
+    .message.ai {
+      align-self: flex-start;
+      background-color: var(--ai-msg);
+      border-bottom-left-radius: 2px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      padding: 0.5rem 0;
+    }
+
+    .mic-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      color: white;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 0 15px var(--accent-glow);
+      transition: all 0.3s ease;
+    }
+
+    .mic-btn.active {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+      animation: pulse 1.5s infinite;
+    }
+
+    .mic-btn svg {
+      width: 28px;
+      height: 28px;
+      fill: currentColor;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    .status-indicator {
+      position: absolute;
+      bottom: 10px;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      background: rgba(15, 23, 42, 0.7);
+      padding: 4px 12px;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Gemini Voice Chat Studio</h1>
+  </header>
+
+  <div class="container">
+    <div class="config-panel">
+      <div class="input-group">
+        <label for="apiKey">Gemini API Key</label>
+        <input type="password" id="apiKey" placeholder="AIzaSy...">
+      </div>
+      <div class="input-group">
+        <label for="voiceSelect">AI Voice</label>
+        <select id="voiceSelect">
+          <option value="Zephyr">Zephyr (フレンドリー・女性)</option>
+          <option value="Kore">Kore (落ち着いた・女性)</option>
+          <option value="Puck">Puck (元気・男性)</option>
+          <option value="Aoede">Aoede (知性的・女性)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="visualizer-container">
+      <canvas id="visualizer"></canvas>
+      <div class="status-indicator" id="status">マイクボタンを押して会話を開始</div>
+    </div>
+
+    <div class="chat-container" id="chatBox">
+      <div class="message ai">こんにちは！声でお話ししましょう。マイクボタンを押して話しかけてね。</div>
+    </div>
+
+    <div class="controls">
+      <button class="mic-btn" id="micBtn">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const micBtn = document.getElementById('micBtn');
+    const statusText = document.getElementById('status');
+    const chatBox = document.getElementById('chatBox');
+    const apiKeyInput = document.getElementById('apiKey');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const canvas = document.getElementById('visualizer');
+    const ctx = canvas.getContext('2d');
+
+    let isListening = false;
+    let recognition = null;
+    let audioCtx = null;
+    let analyser = null;
+    let dataArray = null;
+
+    // キャンバスリサイズ
+    function resizeCanvas() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // 音声認識の初期化
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        isListening = true;
+        micBtn.classList.add('active');
+        statusText.textContent = "聞いています...";
+      };
+
+      recognition.onresult = async (event) => {
+        const text = event.results[0][0].transcript;
+        addMessage(text, 'user');
+        statusText.textContent = "考え中...";
+        await handleAIResponse(text);
+      };
+
+      recognition.onerror = (e) => {
+        console.error("Speech Recognition Error:", e);
+        stopListening();
+        statusText.textContent = "エラーが発生しました";
+      };
+
+      recognition.onend = () => {
+        stopListening();
+      };
+    } else {
+      alert('お使いのブラウザは音声認識に対応していません。Chromeなどをお試しください。');
+    }
+
+    // マイクボタンのトグル
+    micBtn.addEventListener('click', () => {
+      if (!isListening) {
+        startListening();
+      } else {
+        stopListening();
+      }
+    });
+
+    function startListening() {
+      if (!apiKeyInput.value.trim()) {
+        alert("Gemini API Key を入力してください。");
+        return;
+      }
+      setupAudioContext();
+      recognition.start();
+    }
+
+    function stopListening() {
+      isListening = false;
+      micBtn.classList.remove('active');
+      statusText.textContent = "マイクボタンを押して会話を開始";
+      if (recognition) recognition.stop();
+    }
+
+    function addMessage(text, sender) {
+      const msg = document.createElement('div');
+      msg.classList.add('message', sender);
+      msg.textContent = text;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // AIのレスポンス処理＆発話
+    async function handleAIResponse(userText) {
+      const apiKey = apiKeyInput.value.trim();
+      
+      try {
+        // 1. テキスト応答の取得 (Gemini 3 Flash)
+        const textResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userText }] }]
+          })
+        });
+
+        const textData = await textResponse.json();
+        const aiText = textData.candidates?.[0]?.content?.parts?.[0]?.text || "すみません、うまく返答できませんでした。";
+        addMessage(aiText, 'ai');
+
+        // 2. 音声合成 (Gemini TTS)
+        statusText.textContent = "話しています...";
+        const ttsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: aiText }] }],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: voiceSelect.value }
+                }
+              }
+            }
+          })
+        });
+
+        const ttsData = await ttsResponse.json();
+        const base64Audio = ttsData.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+
+        if (base64Audio) {
+          playAudioFromBase64(base64Audio);
+        } else {
+          statusText.textContent = "マイクボタンを押して会話を開始";
+        }
+
+      } catch (err) {
+        console.error("AI Error:", err);
+        addMessage("エラーが発生しました。API Keyや通信状況を確認してください。", 'ai');
+        statusText.textContent = "エラー";
+      }
+    }
+
+    // Audio Context & ビジュアライザー設定
+    function setupAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        drawVisualizer();
+      }
+    }
+
+    // 音声再生
+    function playAudioFromBase64(base64Data) {
+      const binaryString = atob(base64Data);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      audioCtx.decodeAudioData(bytes.buffer, (buffer) => {
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        source.start(0);
+
+        source.onended = () => {
+          statusText.textContent = "マイクボタンを押して会話を開始";
+        };
+      });
+    }
+
+    // ビジュアライザー描画ループ
+    function drawVisualizer() {
+      requestAnimationFrame(drawVisualizer);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (analyser) {
+        analyser.getByteFrequencyData(dataArray);
+      }
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = 40;
+
+      // 波形の円を描画
+      ctx.beginPath();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+
+      for (let i = 0; i < 32; i++) {
+        const value = dataArray ? dataArray[i] : 0;
+        const angle = (i / 32) * Math.PI * 2;
+        const amp = radius + (value / 255) * 35;
+        const x = centerX + Math.cos(angle) * amp;
+        const y = centerY + Math.sin(angle) * amp;
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      // 内側の光るコア
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius * 0.7, 0, Math.PI * 2);
+      ctx.fillStyle = isListening ? '#ef4444' : '#0284c7';
+      ctx.fill();
+    }
+  </script>
+</body>
+</html>
